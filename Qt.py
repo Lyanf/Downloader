@@ -1,51 +1,122 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 import sys
+import threading
+from downloader import Downloader, DownloadTask
+from mysignal import signal
+from hurry.filesize import filesize
 
 class mainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
+        self.initConnect()
+        self.client = Downloader()
+        self.center = self.centralWidget()
+        self.listPage = self.center
+
+        assert isinstance(self.center, ListPage)
+        assert isinstance(self.client, Downloader)
+
     def initUI(self):
+        temp = ListPage(self)
+        self.setCentralWidget(temp)
         self.toolBar = self.addToolBar('tools')
         self.menuBar = self.menuBar()
 
-        addTaskAction = QAction(QIcon(r'Snipaste_2018-04-26_19-07-25.png'),'New',self)
-        startTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-44.png'),'Start',self)
-        pauseTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-19.png'),'Pause',self)
-        deleteTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-26.png'),'Delete',self)
+        addTaskAction = QAction(QIcon(r'Snipaste_2018-04-26_19-07-25.png'), 'New', self)
+        startTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-44.png'), 'Start', self)
+        pauseTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-19.png'), 'Pause', self)
+        deleteTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-26.png'), 'Delete', self)
+        self.signInAction = QAction('SingIn')
+        self.logInAction = QAction('LogIn')
+        self.logOutAction = QAction('LogOut')
 
+        self.addTaskAction = addTaskAction
+        self.startTaskAction = startTaskAction
+        self.pauseTaskAction = pauseTaskAction
+        self.deleteTaskAction = deleteTaskAction
 
-        assert isinstance(self.menuBar,QMenuBar)
+        assert isinstance(self.menuBar, QMenuBar)
         fileMenu = self.menuBar.addMenu('&File')
         fileMenu.addAction(addTaskAction)
         fileMenu.addAction(startTaskAction)
         fileMenu.addAction(pauseTaskAction)
         fileMenu.addAction(deleteTaskAction)
 
-        assert isinstance(self.toolBar,QToolBar)
+        userMenu = self.menuBar.addMenu('&User')
+        userMenu.addAction(self.signInAction)
+        userMenu.addAction(self.logInAction)
+        userMenu.addAction(self.logOutAction)
+
+        assert isinstance(self.toolBar, QToolBar)
         self.toolBar.addAction(addTaskAction)
         self.toolBar.addAction(startTaskAction)
         self.toolBar.addAction(pauseTaskAction)
         self.toolBar.addAction(deleteTaskAction)
 
-        self.resize(800,500)
+        self.resize(800, 500)
         self.show()
-class downloadTaskList(QScrollArea):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
-    def initUI(self):
-        self.table = QTableWidget(self)
+
+    def initConnect(self):
+        self.addTaskAction.triggered.connect(self.addTaskActionSlot)
+        self.startTaskAction.triggered.connect(self.startTaskActionSlot)
+        self.pauseTaskAction.triggered.connect(self.pauseTaskActionSlot)
+        self.deleteTaskAction.triggered.connect(self.deleteTaskActionSlot)
+
+        signal.taskCreatedSignal.connect(self.taskCreatedSlot)
+
+    def addTaskActionSlot(self):
+        getTextTuple = QInputDialog().getText(self, 'URL Input', 'URL', )
+        if getTextTuple[-1] == False:
+            return None
+        else:
+            if getTextTuple[0] != '':
+                url = getTextTuple[0]
+                th = threading.Thread(target=self.client.createTask, kwargs={'url': url})
+                th.start()
+                # self.client.createTask(url)
+            else:
+                return None
+
+    def startTaskActionSlot(self):
+        center = self.centralWidget()
+        assert isinstance(center, ListPage)
+        selection = center.singsTable.selectionModel()
+        assert isinstance(selection, QItemSelectionModel)
+        rowIndex = []
+        for i in selection.selectedRows():
+            rowIndex.append(i.row())
+        for i in rowIndex:
+            self.client.start(i)
+    def pauseTaskActionSlot(self):
+        pass
+    def deleteTaskActionSlot(self):
+        pass
+    def taskCreatedSlot(self, fileName,byteSize,index):
+        print(fileName)
+        assert isinstance(self.listPage,ListPage)
+        self.listPage.singsTable.insertRow(self.listPage.singsTable.rowCount())
+        name = QTableWidgetItem(fileName)
+        sizeHuman = filesize.size(byteSize)
+        sizeHuman = QTableWidgetItem(sizeHuman)
+        self.listPage.singsTable.setItem(index,0,name)
+        self.listPage.singsTable.setItem(index,1,sizeHuman)
+        print(sizeHuman.text())
+        print('ok le?')
+
+    def initDownloader(self):
+        self.donwloader = Downloader()
 
 
-class NativeMusic(QScrollArea):
+class ListPage(QScrollArea):
     def __init__(self, parent):
-        super(NativeMusic, self).__init__()
+        super(ListPage, self).__init__()
         self.parent = parent
         self.setObjectName('nativeMusic')
-        with open('QSS/nativeMusic.qss', 'r', encoding='utf-8') as f:
-            self.setStyleSheet(f.read())
+        # with open('QSS/nativeMusic.qss', 'r', encoding='utf-8') as f:
+        #     self.setStyleSheet(f.read())
 
         self.mainLayout = QVBoxLayout(self)
 
@@ -79,11 +150,11 @@ class NativeMusic(QScrollArea):
         self.singsTable.setObjectName('TasksTable')
         self.singsTable.setMinimumWidth(self.width())
         self.singsTable.setColumnCount(4)
-        self.singsTable.setHorizontalHeaderLabels(['文件名', '大小', '下载进度','下载速度'])
-        self.singsTable.setColumnWidth(0, self.width() / 4 )
-        self.singsTable.setColumnWidth(1, self.width() / 4 )
-        self.singsTable.setColumnWidth(2, self.width() / 4 )
-        self.singsTable.setColumnWidth(3,self.width()/4)
+        self.singsTable.setHorizontalHeaderLabels(['文件名', '大小', '下载进度', '下载速度'])
+        self.singsTable.setColumnWidth(0, self.width() / 4)
+        self.singsTable.setColumnWidth(1, self.width() / 4)
+        self.singsTable.setColumnWidth(2, self.width() / 4)
+        self.singsTable.setColumnWidth(3, self.width() / 4)
         self.singsTable.horizontalHeader().setStretchLastSection(True)
         self.singsTable.verticalHeader().setVisible(False)
         self.singsTable.setShowGrid(False)
@@ -98,8 +169,6 @@ class NativeMusic(QScrollArea):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     t = mainWindow()
-    temp = NativeMusic(t)
-    t.setCentralWidget(temp)
-    print(type(t.layout()))
-    temp.show()
+
+    t.show()
     app.exec_()

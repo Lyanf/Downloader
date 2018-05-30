@@ -110,3 +110,6 @@ venv.bak/
 /tempSave/
 /1.txt
 /downloader.data
+MyModel.py
+data/
+test.py

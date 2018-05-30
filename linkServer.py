@@ -33,7 +33,7 @@ class linker:
         self.socket.send(sendMessage)
 
     def getUrl(self, oriUrl):
-        sendMessage = str.join(' ', [str(3), oriUrl])
+        sendMessage = str.join (' ', [str(3), oriUrl])
         self.socket.send(sendMessage)
         getRecv = self.socket.recv(10240)
         recvList = getRecv.strip()
