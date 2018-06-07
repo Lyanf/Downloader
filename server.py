@@ -1,6 +1,6 @@
 import socketserver
 import os     #运行shell命令
-import sqlalchemy
+
 
 class MyServer(socketserver.StreamRequestHandler):
     def handle(self):

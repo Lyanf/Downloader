@@ -5,6 +5,8 @@ import threading
 import atexit
 import pickle
 from mysignal import signal
+
+
 class DownloadTask():
     def __init__(self, url, fileFolder, threadNum):
         self.time = time.time()
@@ -17,6 +19,7 @@ class DownloadTask():
         self.startList = []
         self.endList = []
         self.threadNum = threadNum
+        self.downloadedSize = 0
         self.__dividFile()
         self.completed = False
 
@@ -28,15 +31,15 @@ class DownloadTask():
             for i in range(0, length, soloSize):
                 self.startList.append(i)
             for i in self.startList:
-                self.endList.append(i + soloSize-1)
+                self.endList.append(i + soloSize - 1)
         else:
             # 这里的soloSize因为除不尽，所以只是整数部分，这里把小数部分都整合到最后一个块里面
             soloSize = (int)(length / num)
             for i in range(0, length, soloSize):
                 self.startList.append(i)
             for i in self.startList[0:-1]:
-                self.endList.append(i + soloSize-1)
-            self.endList.append(length-1)
+                self.endList.append(i + soloSize - 1)
+            self.endList.append(length - 1)
         self.oriStartList = self.startList
         self.oriEndList = self.endList
         print(self.startList)
@@ -67,6 +70,16 @@ class DownloadTask():
     def logDownloaded(self, index, size):
         self.startList[index] = self.startList[index] + size
 
+    def addDownloadedSize(self, size):
+        self.downloadedSize += size
+
+    def getDownloadedSize(self):
+        return self.downloadedSize
+
+    def __str__(self):
+        return 'DownloadTask:' + '%s   url:%s' % (self.getName(), self.getUrl())
+
+
 class Downloader:
     def __init__(self):
         self.downloadTaskList = []
@@ -76,7 +89,6 @@ class Downloader:
         self.saveFolder = os.path.abspath('./downloadFiles')
         self.dataFolder = os.path.abspath('./')
         self.dataPath = os.path.join(self.dataFolder, 'downloader.data')
-        atexit.register(self.saveInfo)
 
     def setThreadNum(self, num):
         # num = (int)(num)
@@ -93,25 +105,25 @@ class Downloader:
             fileFolder = self.saveFolder
         task = DownloadTask(url, fileFolder, self.threadNum)
         self.downloadTaskList.append(task)
-        signal.taskCreatedSignal.emit(task.getName(),task.getSize(),len(self.downloadTaskList)-1)
-
+        signal.taskCreatedSignal.emit(task.getName(), task.getSize(), len(self.downloadTaskList) - 1)
 
     #     开始一个下载任务，接收该下载任务的index
     def start(self, index):
         t = threading.Thread(target=self.__startDownload, kwargs={'index': index})
+
         t.start()
 
     '''开始一个下载任务，接收该下载任务的index，属于内部函数'''
 
     def __startDownload(self, index):
         thisTask = self.downloadTaskList[index]
-        assert isinstance(thisTask,DownloadTask)
-        if thisTask.isCompleted()==True:
+        assert isinstance(thisTask, DownloadTask)
+        if thisTask.isCompleted() == True:
             return
         que = []
         for i in range(0, self.threadNum):
             t = threading.Thread(target=self.__threadOfDownload, kwargs={'downloadTask': self.downloadTaskList[index],
-                                                                       'index': i})
+                                                                         'index': i})
             t.start()
             que.append(t)
         for i in que:
@@ -132,15 +144,15 @@ class Downloader:
 
     '''对于每一个下载任务，分部分下载，即多线程，该index是指第几个线程，属于内部函数'''
 
-    def __threadOfDownload(self, downloadTask:DownloadTask, index):
+    def __threadOfDownload(self, downloadTask: DownloadTask, index):
         if os.path.exists(self.tempFolder) == False:
             os.mkdir(self.tempFolder)
         path = os.path.join(self.tempFolder, downloadTask.getName() + str(index))
-        tstart,tend = downloadTask.getContinueStartEndList()
-        ostart,oend = downloadTask.getOriStartEndList()
-        start,end = tstart[index],tend[index]
-        oriStart,oriEnd = ostart[index],oend[index]
-        hasDownloaded = start-oriStart
+        tstart, tend = downloadTask.getContinueStartEndList()
+        ostart, oend = downloadTask.getOriStartEndList()
+        start, end = tstart[index], tend[index]
+        oriStart, oriEnd = ostart[index], oend[index]
+        hasDownloaded = start - oriStart
         if start == end:
             return
         thisHeader = {'Range': 'bytes=%d-%d' % (start, end)}
@@ -150,14 +162,23 @@ class Downloader:
             for content in link.iter_content(self.soloSize):
                 f.write(content)
                 downloadTask.logDownloaded(index, self.soloSize)
+                downloadTask.addDownloadedSize(self.soloSize)
         link.close()
+
+    def registerExitDownloader(self):
+        atexit.register(self.saveInfo)
 
     # 将当前下载器对象进行保存
     def saveInfo(self):
-        os.makedirs(self.dataFolder, exist_ok=True)
+        # os.makedirs(self.dataFolder, exist_ok=True)
+        # os.remove(self.dataPath)
         f = open(self.dataPath, 'wb')
         pickle.dump(self, f)
         f.close()
+        with open('t.txt', 'w') as f:
+            for i in self.downloadTaskList:
+                f.write(i.__str__())
+                f.write('\n')
 
     #  读取上一次关闭掉的下载器对象
     def load(self):
@@ -167,5 +188,3 @@ class Downloader:
             return t
         else:
             return self
-
-

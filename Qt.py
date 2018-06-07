@@ -1,3 +1,4 @@
+import time
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -6,18 +7,30 @@ import threading
 from downloader import Downloader, DownloadTask
 from mysignal import signal
 from hurry.filesize import filesize
-
+import pickle
 class mainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
         self.initConnect()
-        self.client = Downloader()
+        self.client = self.restoreDonwloader()
         self.center = self.centralWidget()
         self.listPage = self.center
-
+        self.initTaskForUI()
         assert isinstance(self.center, ListPage)
         assert isinstance(self.client, Downloader)
+
+    def restoreDonwloader(self):
+        getDownloader = ''
+        try:
+            with open('downloader.data','rb') as f:
+                getDownloader = pickle.load(f)
+        except (FileNotFoundError, EOFError) as e:
+            e.with_traceback(None)
+            print('已经创建全新的Downloader！')
+            getDownloader = Downloader()
+        getDownloader.registerExitDownloader()
+        return getDownloader
 
     def initUI(self):
         temp = ListPage(self)
@@ -67,6 +80,13 @@ class mainWindow(QMainWindow):
 
         signal.taskCreatedSignal.connect(self.taskCreatedSlot)
 
+    def initTaskForUI(self):
+        i = 0
+        for task in self.client.downloadTaskList:
+            assert isinstance(task,DownloadTask)
+            signal.taskCreatedSignal.emit(task.getName(),task.getSize(),i)
+            i = i+1
+
     def addTaskActionSlot(self):
         getTextTuple = QInputDialog().getText(self, 'URL Input', 'URL', )
         if getTextTuple[-1] == False:
@@ -93,7 +113,16 @@ class mainWindow(QMainWindow):
     def pauseTaskActionSlot(self):
         pass
     def deleteTaskActionSlot(self):
-        pass
+        center = self.centralWidget()
+        assert isinstance(center, ListPage)
+        selection = center.singsTable.selectionModel()
+        assert isinstance(selection, QItemSelectionModel)
+        rowIndex = []
+        for i in selection.selectedRows():
+            rowIndex.append(i.row())
+        for i in rowIndex:
+            self.client.start(i)
+            
     def taskCreatedSlot(self, fileName,byteSize,index):
         print(fileName)
         assert isinstance(self.listPage,ListPage)
@@ -106,8 +135,18 @@ class mainWindow(QMainWindow):
         print(sizeHuman.text())
         print('ok le?')
 
-    def initDownloader(self):
-        self.donwloader = Downloader()
+    def speedSlot(self,speed,index):
+        assert isinstance(self.listPage,ListPage)
+        self.listPage.singsTable.setItem(index,2,speed)
+
+    def setAllSpeedForUI(self):
+        while True:
+            time.sleep(1)
+            i = 0
+            for task in self.client.downloadTaskList:
+                assert isinstance(task,DownloadTask)
+                signal.taskSpeedSignal.emit(str(DownloadTask.downloadedSize)+'Byte',i)
+
 
 
 class ListPage(QScrollArea):
