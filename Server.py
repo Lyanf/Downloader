@@ -1,5 +1,7 @@
+# coding=UTF-8
 import socketserver
 import os     #运行shell命令
+import FUNC
 
 
 class MyServer(socketserver.StreamRequestHandler):
@@ -11,20 +13,47 @@ class MyServer(socketserver.StreamRequestHandler):
             account = List[1]
             pw = List[2]
 
-        if List[0] == 'log out':                        #登出
-            func = List[1]
+            flag = FUNC.login(account,pw)
+            self.request.sendall(bytes(flag, 'utf8'))
+
+
 
         if List[0] == 'send url':
-            url = List[1]
-            os.system('download url')        #这里写linux内下载命令 比如axel + url
+            userID = List[1]
+            URL = List[2]
+            flag = FUNC.sendURL(userID,URL)
+            self.request.sendall(bytes(flag, 'utf8'))
+
+
+
+                   #这里写linux内下载命令 比如axel + url
+
 
         if List[0] == 'get url':
-            self.request.sendall('url')                 #服务器的
+            userID = List[1]
+            fileName = List[2]
 
+            flag = FUNC.getURL(userID,fileName)
+            self.request.sendall(bytes(flag, 'utf8'))                #服务器的
+
+        if List[0] == 'get list':
+            userID = List[1]
+
+            flag = FUNC.getList(userID)
+            self.request.sendall(bytes(flag, 'utf8'))
+
+        if List[0] == 'register':
+            account = List[1]
+            pw = List[2]
+            flag = FUNC.register(account,pw)
+            self.request.sendall(bytes(flag, 'utf8'))
 
 if __name__ == '__main__':
-    server = socketserver.ThreadingTCPServer(('23.83.250.163', 6091), MyServer)
+
+    server = socketserver.ThreadingTCPServer(('127.0.0.1', 8009), MyServer)
+
     server.serve_forever()
+
 
 
 
