@@ -17,6 +17,7 @@ class mainWindow(QMainWindow):
         self.center = self.centralWidget()
         self.listPage = self.center
         self.initTaskForUI()
+        threading.Thread(target=self.setAllSpeedForUI).start()
         assert isinstance(self.center, ListPage)
         assert isinstance(self.client, Downloader)
 
@@ -79,7 +80,7 @@ class mainWindow(QMainWindow):
         self.deleteTaskAction.triggered.connect(self.deleteTaskActionSlot)
 
         signal.taskCreatedSignal.connect(self.taskCreatedSlot)
-
+        signal.taskSpeedSignal.connect(self.speedSlot)
     def initTaskForUI(self):
         i = 0
         for task in self.client.downloadTaskList:
@@ -132,20 +133,20 @@ class mainWindow(QMainWindow):
         sizeHuman = QTableWidgetItem(sizeHuman)
         self.listPage.singsTable.setItem(index,0,name)
         self.listPage.singsTable.setItem(index,1,sizeHuman)
-        print(sizeHuman.text())
+        print('bytes:'+str(byteSize))
         print('ok le?')
 
     def speedSlot(self,speed,index):
         assert isinstance(self.listPage,ListPage)
-        self.listPage.singsTable.setItem(index,2,speed)
-
+        # self.listPage.singsTable.setItem(index,2,speed)
+        print('speed')
     def setAllSpeedForUI(self):
         while True:
             time.sleep(1)
             i = 0
             for task in self.client.downloadTaskList:
                 assert isinstance(task,DownloadTask)
-                signal.taskSpeedSignal.emit(str(DownloadTask.downloadedSize)+'Byte',i)
+                signal.taskSpeedSignal.emit(str(task.getDownloadedSize())+'Byte',i)
 
 
 
