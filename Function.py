@@ -1,3 +1,5 @@
+# -*- coding:utf-8 -*-
+
 import socket
 HOST = '23.83.250.163'    # The remote host
 PORT = 8009             # The same port as used by the server
