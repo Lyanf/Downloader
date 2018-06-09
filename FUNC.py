@@ -27,19 +27,19 @@ def register(account,pw):
             sql.execute("insert into user(id,pw) values(?,?)",
                         (user_ID, user_PW))
             sql.commit()
-            print("添加成功")
+            print("add successfully")
             sql.execute("create table '%s'(file varchar(50) primary key,URL varchar(200))" % user_ID)
 
 
 
             sql.commit()
             os.system('mkdir ' + account)
-            print("文件目录已创建")
+            print("dir has been created")
             sql.close()
             return '1'
             break
         else:
-            print("用户已存在")
+            print("user is already existed")
             sql.close()
             return '2'
             break
@@ -58,7 +58,7 @@ def sendURL(userID,URL):
         sql.close()
 
         os.system('cd ..')
-        return '这里下载文件'+fileName+'并入库'
+        return 'file:'+fileName
         break
 
 
