@@ -8,6 +8,7 @@ from downloader import Downloader, DownloadTask
 from mysignal import signal
 from hurry.filesize import filesize
 import pickle
+from MyThread import BackWorkder
 class mainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -17,9 +18,17 @@ class mainWindow(QMainWindow):
         self.center = self.centralWidget()
         self.listPage = self.center
         self.initTaskForUI()
-        threading.Thread(target=self.setAllSpeedForUI).start()
+        self.initSpeedShow()
         assert isinstance(self.center, ListPage)
         assert isinstance(self.client, Downloader)
+
+    def initSpeedShow(self):
+        self.back = BackWorkder(self.client)
+        self.th = QThread()
+        self.back.moveToThread(self.th)
+        self.back.startSpeed.connect(self.back.setAllSpeedForUI)
+        self.th.start()
+        self.back.startSpeed.emit()
 
     def restoreDonwloader(self):
         getDownloader = ''
@@ -136,17 +145,12 @@ class mainWindow(QMainWindow):
         print('bytes:'+str(byteSize))
         print('ok le?')
 
-    def speedSlot(self,speed,index):
+    def speedSlot(self,speed:str,index:int):
         assert isinstance(self.listPage,ListPage)
-        # self.listPage.singsTable.setItem(index,2,speed)
-        print('speed')
-    def setAllSpeedForUI(self):
-        while True:
-            time.sleep(1)
-            i = 0
-            for task in self.client.downloadTaskList:
-                assert isinstance(task,DownloadTask)
-                signal.taskSpeedSignal.emit(str(task.getDownloadedSize())+'Byte',i)
+        speedItem = QTableWidgetItem(speed)
+        self.listPage.singsTable.setItem(index,2,speedItem)
+        print(speed)
+
 
 
 

@@ -161,8 +161,8 @@ class Downloader:
             f.seek(hasDownloaded)
             for content in link.iter_content(self.soloSize):
                 f.write(content)
-                downloadTask.logDownloaded(index, self.soloSize)
-                downloadTask.addDownloadedSize(self.soloSize)
+                downloadTask.logDownloaded(index, len(content))
+                downloadTask.addDownloadedSize(len(content))
         link.close()
 
     def registerExitDownloader(self):

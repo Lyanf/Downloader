@@ -48,7 +48,7 @@ def sendURL(userID,URL):
         fileName = URL.split(r'/')[-1]
         os.system('cd ' + userID)
         os.system('wget ' + URL)
-        newURL = 'liyanfeng.xyz/'+userID+'/'+fileName
+        newURL = 'liyanfeng.xyz/downloader/'+userID+'/'+fileName
 
 
         sql = sqlite3.connect("user.db")

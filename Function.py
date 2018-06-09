@@ -1,5 +1,5 @@
 import socket
-HOST = '127.0.0.1'    # The remote host
+HOST = '23.83.250.163'    # The remote host
 PORT = 8009             # The same port as used by the server
 
 

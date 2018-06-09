@@ -50,7 +50,7 @@ class MyServer(socketserver.StreamRequestHandler):
 
 if __name__ == '__main__':
 
-    server = socketserver.ThreadingTCPServer(('127.0.0.1', 8009), MyServer)
+    server = socketserver.ThreadingTCPServer(('23.83.250.163', 8009), MyServer)
 
     server.serve_forever()
 
