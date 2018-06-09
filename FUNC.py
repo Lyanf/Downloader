@@ -47,8 +47,7 @@ def register(account,pw):
 def sendURL(userID,URL):
     while 1:
         fileName = URL.split(r'/')[-1]
-        os.system('cd ' + userID)
-        os.system('wget ' + URL)
+        os.system('cd '+userID+';'+'wget ' + URL)
         newURL = 'liyanfeng.xyz/downloader/'+userID+'/'+fileName
 
 
@@ -57,7 +56,6 @@ def sendURL(userID,URL):
         sql.commit()
         sql.close()
 
-        os.system('cd ..')
         return 'file:'+fileName
         break
 
