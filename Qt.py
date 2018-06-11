@@ -267,7 +267,7 @@ class ListPage(QScrollArea):
         self.singsTable.setObjectName('TasksTable')
         self.singsTable.setMinimumWidth(self.width())
         self.singsTable.setColumnCount(4)
-        self.singsTable.setHorizontalHeaderLabels(['文件名', '大小', '下载进度', '下载速度'])
+        self.singsTable.setHorizontalHeaderLabels(['文件名', '大小', '下载进度', '    '])
         self.singsTable.setColumnWidth(0, self.width() / 4)
         self.singsTable.setColumnWidth(1, self.width() / 4)
         self.singsTable.setColumnWidth(2, self.width() / 4)

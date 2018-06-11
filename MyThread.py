@@ -15,18 +15,24 @@ class BackWorkder(QObject):
     def __init__(self, client):
         super(BackWorkder, self).__init__()
         self.client = client
+        self.stop = False
 
     @pyqtSlot()
     def setAllSpeedForUI(self):
         while True:
-            time.sleep(1)
-            i = 0
-            for task in self.client.downloadTaskList:
-                assert isinstance(task, DownloadTask)
-                t = filesize.size(task.getDownloadedSize())
-                signal.taskSpeedSignal.emit(str(t), i)
-                i = i + 1
-
+            if self.stop == False:
+                time.sleep(1)
+                i = 0
+                for task in self.client.downloadTaskList:
+                    assert isinstance(task, DownloadTask)
+                    t = filesize.size(task.getDownloadedSize())
+                    signal.taskSpeedSignal.emit(str(t), i)
+                    i = i + 1
+            else:
+                break
+    @pyqtSlot()
+    def setSpeedStop(self):
+        self.stop == True
 
 class UserWorker(QObject):
     signInSignal = pyqtSignal(str, str)

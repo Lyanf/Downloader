@@ -15,29 +15,29 @@ class DownloadTask():
         self.url = url
         self.name = url.split(r'/')[-1]
         self.filePath = os.path.join(fileFolder, self.name)
-        self.response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True)
+        self.header = response.headers
         # self.header = self.response.headers
-        self.fileSize = (int)(self.response.headers['Content-Length'])
+        self.fileSize = (int)(self.header['Content-Length'])
         self.startList = []
         self.endList = []
         self.threadNum = threadNum
         self.downloadedSize = 0
         self.__dividFile()
         self.completed = False
-
     def __dividFile(self):
         length = self.fileSize
         num = self.threadNum
         if (length % num == 0):
             soloSize = (int)(length / num)
-            for i in range(0, length, soloSize):
+            for i in range(0, length-1, soloSize):
                 self.startList.append(i)
             for i in self.startList:
                 self.endList.append(i + soloSize - 1)
         else:
             # 这里的soloSize因为除不尽，所以只是整数部分，这里把小数部分都整合到最后一个块里面
             soloSize = (int)(length / num)
-            for i in range(0, length, soloSize):
+            for i in range(0, length-1, soloSize):
                 self.startList.append(i)
             for i in self.startList[0:-1]:
                 self.endList.append(i + soloSize - 1)
@@ -186,13 +186,11 @@ class Downloader:
     def saveInfo(self):
         # os.makedirs(self.dataFolder, exist_ok=True)
         # os.remove(self.dataPath)
+        print(123123123)
         f = open(self.dataPath, 'wb')
         pickle.dump(self, f)
         f.close()
-        with open('t.txt', 'w') as f:
-            for i in self.downloadTaskList:
-                f.write(i.__str__())
-                f.write('\n')
+        print(445666)
 
     #  读取上一次关闭掉的下载器对象
     def load(self):
