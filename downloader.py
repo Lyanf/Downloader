@@ -85,13 +85,14 @@ class DownloadTask():
 class Downloader:
     def __init__(self):
         self.downloadTaskList = []
+        self.downloadingThread = []
         self.threadNum = 5
         self.soloSize = 10240
         self.tempFolder = os.path.abspath('./tempSave')
         self.saveFolder = os.path.abspath('./downloadFiles')
         self.dataFolder = os.path.abspath('./')
         self.dataPath = os.path.join(self.dataFolder, 'downloader.data')
-
+        self.startedIndex = []
     def setThreadNum(self, num):
         # num = (int)(num)
         if num > 64 or num <= 0:
@@ -108,28 +109,33 @@ class Downloader:
         task = DownloadTask(url, fileFolder, self.threadNum)
         self.downloadTaskList.append(task)
         signal.taskCreatedSignal.emit(task.getName(), task.getSize(), len(self.downloadTaskList) - 1)
+        return
 
     #     开始一个下载任务，接收该下载任务的index
     def start(self, index):
         t = threading.Thread(target=self.__startDownload, kwargs={'index': index})
-
         t.start()
+        self.startedIndex.append(index)
 
     '''开始一个下载任务，接收该下载任务的index，属于内部函数'''
-
     def __startDownload(self, index):
         thisTask = self.downloadTaskList[index]
         assert isinstance(thisTask, DownloadTask)
         if thisTask.isCompleted() == True:
+            print('该任务的下载已经完成了！')
             return
         que = []
         for i in range(0, self.threadNum):
             t = threading.Thread(target=self.__threadOfDownload, kwargs={'downloadTask': self.downloadTaskList[index],
-                                                                         'index': i})
+                                                                         'index': i,
+                                                                         'whichTask':index})
             t.start()
             que.append(t)
         for i in que:
             i.join()
+        if index not in self.startedIndex:
+            print('该任务已经成功暂停！')
+            return
         if not os.path.exists(self.saveFolder):
             os.mkdir(self.saveFolder)
         with open(os.path.join(self.saveFolder, thisTask.getName()), 'w+b') as completeFile:
@@ -143,10 +149,11 @@ class Downloader:
                         break
                 f.close()
         thisTask.setHasCompleted(True)
+        print('该任务已经下载完毕！')
 
     '''对于每一个下载任务，分部分下载，即多线程，该index是指第几个线程，属于内部函数'''
 
-    def __threadOfDownload(self, downloadTask: DownloadTask, index):
+    def __threadOfDownload(self, downloadTask: DownloadTask, index,whichTask):
         if os.path.exists(self.tempFolder) == False:
             os.mkdir(self.tempFolder)
         path = os.path.join(self.tempFolder, downloadTask.getName() + str(index))
@@ -157,14 +164,19 @@ class Downloader:
         hasDownloaded = start - oriStart
         if start == end:
             return
+        print('线程 %d 已经创建完毕，开始下载！'%index)
         thisHeader = {'Range': 'bytes=%d-%d' % (start, end)}
         link = requests.get(downloadTask.getUrl(), stream=True, headers=thisHeader)
-        with open(path, 'a+b') as f:
-            f.seek(hasDownloaded)
+        with open(path, 'a+b',buffering=self.soloSize) as f:
             for content in link.iter_content(self.soloSize):
-                f.write(content)
-                downloadTask.logDownloaded(index, len(content))
-                downloadTask.addDownloadedSize(len(content))
+                if whichTask in self.startedIndex:
+                    f.write(content)
+                    downloadTask.logDownloaded(index, len(content))
+                    downloadTask.addDownloadedSize(len(content))
+                else:
+                    link.close()
+                    return
+        print('线程 %d 已经下载完毕！'%index)
         link.close()
 
     def registerExitDownloader(self):

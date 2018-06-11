@@ -1,4 +1,5 @@
 import time
+from User import User
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -8,7 +9,7 @@ from downloader import Downloader, DownloadTask
 from mysignal import signal
 from hurry.filesize import filesize
 import pickle
-from MyThread import BackWorkder
+from MyThread import BackWorkder,UserWorker
 class mainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -19,9 +20,15 @@ class mainWindow(QMainWindow):
         self.listPage = self.center
         self.initTaskForUI()
         self.initSpeedShow()
+        self.initUserThread()
         assert isinstance(self.center, ListPage)
         assert isinstance(self.client, Downloader)
 
+    def initUserThread(self):
+        self.userThread = QThread()
+        self.userWorker = UserWorker()
+        self.userWorker.moveToThread(self.userThread)
+        self.userThread.start()
     def initSpeedShow(self):
         self.back = BackWorkder(self.client)
         self.th = QThread()
@@ -54,12 +61,14 @@ class mainWindow(QMainWindow):
         deleteTaskAction = QAction(QIcon(r'Snipaste_2018-04-27_17-30-26.png'), 'Delete', self)
         self.signInAction = QAction('SingIn')
         self.logInAction = QAction('LogIn')
-        self.logOutAction = QAction('LogOut')
+        self.showListAction = QAction('ShowList')
+        self.sendUrlAction = QAction('SendUrl')
+        self.getUrlAction = QAction('GetUrl')
 
         self.addTaskAction = addTaskAction
         self.startTaskAction = startTaskAction
         self.pauseTaskAction = pauseTaskAction
-        self.deleteTaskAction = deleteTaskAction
+        # self.deleteTaskAction = deleteTaskAction
 
         assert isinstance(self.menuBar, QMenuBar)
         fileMenu = self.menuBar.addMenu('&File')
@@ -71,13 +80,15 @@ class mainWindow(QMainWindow):
         userMenu = self.menuBar.addMenu('&User')
         userMenu.addAction(self.signInAction)
         userMenu.addAction(self.logInAction)
-        userMenu.addAction(self.logOutAction)
+        # userMenu.addAction(self.showListAction)
+        userMenu.addAction(self.sendUrlAction)
+        userMenu.addAction(self.getUrlAction)
 
         assert isinstance(self.toolBar, QToolBar)
         self.toolBar.addAction(addTaskAction)
         self.toolBar.addAction(startTaskAction)
         self.toolBar.addAction(pauseTaskAction)
-        self.toolBar.addAction(deleteTaskAction)
+        # self.toolBar.addAction(deleteTaskAction)
 
         self.resize(800, 500)
         self.show()
@@ -86,10 +97,63 @@ class mainWindow(QMainWindow):
         self.addTaskAction.triggered.connect(self.addTaskActionSlot)
         self.startTaskAction.triggered.connect(self.startTaskActionSlot)
         self.pauseTaskAction.triggered.connect(self.pauseTaskActionSlot)
-        self.deleteTaskAction.triggered.connect(self.deleteTaskActionSlot)
+        # self.deleteTaskAction.triggered.connect(self.deleteTaskActionSlot)
+        self.signInAction.triggered.connect(self.signInActionSlot)
+        self.logInAction.triggered.connect(self.logInActionSlot)
+        self.showListAction.triggered.connect(self.showListActionSlot)
+        self.sendUrlAction.triggered.connect(self.sendUrlActionSLot)
+        self.getUrlAction.triggered.connect(self.getUrlActionSlot)
 
         signal.taskCreatedSignal.connect(self.taskCreatedSlot)
         signal.taskSpeedSignal.connect(self.speedSlot)
+        signal.taskPauseSignal.connect(self.pauseTaskSlot)
+        signal.informationSignal.connect(self.informationSlot)
+        signal.changeUserNameSignal.connect(self.userChangedSlot)
+    def userChangedSlot(self,name):
+        assert isinstance(self.listPage,ListPage)
+        self.listPage.userLabel.setText(name)
+    def informationSlot(self,info):
+        t = QMessageBox().information(self,'information',info,QMessageBox.Ok)
+    def signInActionSlot(self):
+        getTextTuple1 = QInputDialog().getText(self, 'User Name', 'User', )
+        if getTextTuple1[-1] == False:
+            return None
+        else:
+            userName = getTextTuple1[0]
+            getTextTuple2 = QInputDialog().getText(self,'Password','password')
+            if getTextTuple2[-1] ==False:
+                return None
+            password = getTextTuple2[0]
+            # self.userWorker.signInSignal.connect(self.userWorker.signInSlot)
+            self.userWorker.signInSignal.emit(userName,password)
+
+    def logInActionSlot(self):
+        getTextTuple1 = QInputDialog().getText(self, 'User Name', 'User', )
+        if getTextTuple1[-1] == False:
+            return None
+        else:
+            userName = getTextTuple1[0]
+            getTextTuple2 = QInputDialog().getText(self,'Password','password')
+            if getTextTuple2[-1] ==False:
+                return None
+            password = getTextTuple2[0]
+            # self.userWorker.signInSignal.connect(self.userWorker.signInSlot)
+            self.userWorker.logInSignal.emit(userName,password)
+    def showListActionSlot(self):
+        self.userWorker.showListSignal.emit()
+    def sendUrlActionSLot(self):
+        turl = QInputDialog().getText(self,'download by server','input the url')
+        if turl[-1] == False:
+            return None
+        url = turl[0]
+        self.userWorker.sendUrlSignal.emit(url)
+    def getUrlActionSlot(self):
+        turl = QInputDialog().getText(self, 'download by server', 'input the fileName')
+        if turl[-1] == False:
+            return None
+        url = turl[0]
+        self.userWorker.getUrlSignal.emit(url)
+
     def initTaskForUI(self):
         i = 0
         for task in self.client.downloadTaskList:
@@ -121,7 +185,15 @@ class mainWindow(QMainWindow):
         for i in rowIndex:
             self.client.start(i)
     def pauseTaskActionSlot(self):
-        pass
+        center = self.centralWidget()
+        assert isinstance(center, ListPage)
+        selection = center.singsTable.selectionModel()
+        assert isinstance(selection, QItemSelectionModel)
+        rowIndex = []
+        for i in selection.selectedRows():
+            rowIndex.append(i.row())
+        for i in rowIndex:
+            signal.taskPauseSignal.emit(i)
     def deleteTaskActionSlot(self):
         center = self.centralWidget()
         assert isinstance(center, ListPage)
@@ -142,16 +214,15 @@ class mainWindow(QMainWindow):
         sizeHuman = QTableWidgetItem(sizeHuman)
         self.listPage.singsTable.setItem(index,0,name)
         self.listPage.singsTable.setItem(index,1,sizeHuman)
-        print('bytes:'+str(byteSize))
-        print('ok le?')
+        print('任务创建成功！文件名为: %s'%fileName)
 
     def speedSlot(self,speed:str,index:int):
         assert isinstance(self.listPage,ListPage)
         speedItem = QTableWidgetItem(speed)
         self.listPage.singsTable.setItem(index,2,speedItem)
-        print(speed)
 
-
+    def pauseTaskSlot(self,index):
+        self.client.startedIndex.remove(index)
 
 
 class ListPage(QScrollArea):
@@ -170,6 +241,7 @@ class ListPage(QScrollArea):
     # 布局。
     def setTopShow(self):
         self.showLabel = QLabel("下载器")
+        self.userLabel = QLabel('未登录')
 
         self.spaceLine = QFrame(self)
         self.spaceLine.setObjectName("spaceLine")
@@ -185,6 +257,7 @@ class ListPage(QScrollArea):
         self.topShowLayout.addWidget(self.showLabel)
         # self.topShowLayout.addWidget(self.selectButton)
         self.topShowLayout.addStretch(1)
+        self.topShowLayout.addWidget(self.userLabel)
 
         self.mainLayout.addLayout(self.topShowLayout)
         self.mainLayout.addWidget(self.spaceLine)
