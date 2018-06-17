@@ -125,6 +125,8 @@ class Downloader:
             print('该任务的下载已经完成了！')
             return
         que = []
+        if os.path.exists(self.tempFolder) == False:
+            os.mkdir(self.tempFolder)
         for i in range(0, self.threadNum):
             t = threading.Thread(target=self.__threadOfDownload, kwargs={'downloadTask': self.downloadTaskList[index],
                                                                          'index': i,
@@ -149,13 +151,15 @@ class Downloader:
                         break
                 f.close()
         thisTask.setHasCompleted(True)
+        for i in range(0,self.threadNum):
+            path = os.path.join(self.tempFolder, thisTask.getName() + str(i))
+            os.remove(path)
+
         print('该任务已经下载完毕！')
 
     '''对于每一个下载任务，分部分下载，即多线程，该index是指第几个线程，属于内部函数'''
 
     def __threadOfDownload(self, downloadTask: DownloadTask, index,whichTask):
-        if os.path.exists(self.tempFolder) == False:
-            os.mkdir(self.tempFolder)
         path = os.path.join(self.tempFolder, downloadTask.getName() + str(index))
         tstart, tend = downloadTask.getContinueStartEndList()
         ostart, oend = downloadTask.getOriStartEndList()
@@ -182,15 +186,16 @@ class Downloader:
     def registerExitDownloader(self):
         atexit.register(self.saveInfo)
 
-    # 将当前下载器对象进行保存
+    # 将当前下载器对象进行保存,并把所有任务都暂停
     def saveInfo(self):
         # os.makedirs(self.dataFolder, exist_ok=True)
         # os.remove(self.dataPath)
-        print(123123123)
+        print('程序准备退出，保存数据中...')
+        signal.exitSignal.emit()
         f = open(self.dataPath, 'wb')
         pickle.dump(self, f)
         f.close()
-        print(445666)
+        print('退出成功!')
 
     #  读取上一次关闭掉的下载器对象
     def load(self):

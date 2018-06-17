@@ -109,6 +109,12 @@ class mainWindow(QMainWindow):
         signal.taskPauseSignal.connect(self.pauseTaskSlot)
         signal.informationSignal.connect(self.informationSlot)
         signal.changeUserNameSignal.connect(self.userChangedSlot)
+        signal.exitSignal.connect(self.pauseAllSlot)
+    def pauseAllSlot(self):
+        assert isinstance(self.listPage,ListPage)
+        for index in range(0,len(self.client.downloadTaskList)):
+            signal.taskPauseSignal.emit(index)
+
     def userChangedSlot(self,name):
         assert isinstance(self.listPage,ListPage)
         self.listPage.userLabel.setText(name)
@@ -177,7 +183,7 @@ class mainWindow(QMainWindow):
     def startTaskActionSlot(self):
         center = self.centralWidget()
         assert isinstance(center, ListPage)
-        selection = center.singsTable.selectionModel()
+        selection = center.tTable.selectionModel()
         assert isinstance(selection, QItemSelectionModel)
         rowIndex = []
         for i in selection.selectedRows():
@@ -187,7 +193,7 @@ class mainWindow(QMainWindow):
     def pauseTaskActionSlot(self):
         center = self.centralWidget()
         assert isinstance(center, ListPage)
-        selection = center.singsTable.selectionModel()
+        selection = center.tTable.selectionModel()
         assert isinstance(selection, QItemSelectionModel)
         rowIndex = []
         for i in selection.selectedRows():
@@ -197,7 +203,7 @@ class mainWindow(QMainWindow):
     def deleteTaskActionSlot(self):
         center = self.centralWidget()
         assert isinstance(center, ListPage)
-        selection = center.singsTable.selectionModel()
+        selection = center.tTable.selectionModel()
         assert isinstance(selection, QItemSelectionModel)
         rowIndex = []
         for i in selection.selectedRows():
@@ -208,21 +214,27 @@ class mainWindow(QMainWindow):
     def taskCreatedSlot(self, fileName,byteSize,index):
         print(fileName)
         assert isinstance(self.listPage,ListPage)
-        self.listPage.singsTable.insertRow(self.listPage.singsTable.rowCount())
+        self.listPage.tTable.insertRow(self.listPage.tTable.rowCount())
         name = QTableWidgetItem(fileName)
         sizeHuman = filesize.size(byteSize)
         sizeHuman = QTableWidgetItem(sizeHuman)
-        self.listPage.singsTable.setItem(index,0,name)
-        self.listPage.singsTable.setItem(index,1,sizeHuman)
+        self.listPage.tTable.setItem(index, 0, name)
+        self.listPage.tTable.setItem(index, 1, sizeHuman)
         print('任务创建成功！文件名为: %s'%fileName)
 
     def speedSlot(self,speed:str,index:int):
         assert isinstance(self.listPage,ListPage)
         speedItem = QTableWidgetItem(speed)
-        self.listPage.singsTable.setItem(index,2,speedItem)
+        self.listPage.tTable.setItem(index, 2, speedItem)
 
     def pauseTaskSlot(self,index):
-        self.client.startedIndex.remove(index)
+        try:
+            self.client.startedIndex.remove(index)
+        except:
+            pass
+
+    def closeEvent(self, *args, **kwargs):
+        signal.exitSignal.emit()
 
 
 class ListPage(QScrollArea):
@@ -236,7 +248,7 @@ class ListPage(QScrollArea):
         self.mainLayout = QVBoxLayout(self)
 
         self.setTopShow()
-        self.musicTable()
+        self.TaskTable()
 
     # 布局。
     def setTopShow(self):
@@ -262,25 +274,25 @@ class ListPage(QScrollArea):
         self.mainLayout.addLayout(self.topShowLayout)
         self.mainLayout.addWidget(self.spaceLine)
 
-    def musicTable(self):
-        self.singsTable = QTableWidget()
-        self.singsTable.setObjectName('TasksTable')
-        self.singsTable.setMinimumWidth(self.width())
-        self.singsTable.setColumnCount(4)
-        self.singsTable.setHorizontalHeaderLabels(['文件名', '大小', '下载进度', '    '])
-        self.singsTable.setColumnWidth(0, self.width() / 4)
-        self.singsTable.setColumnWidth(1, self.width() / 4)
-        self.singsTable.setColumnWidth(2, self.width() / 4)
-        self.singsTable.setColumnWidth(3, self.width() / 4)
-        self.singsTable.horizontalHeader().setStretchLastSection(True)
-        self.singsTable.verticalHeader().setVisible(False)
-        self.singsTable.setShowGrid(False)
-        self.singsTable.setAlternatingRowColors(True)
+    def TaskTable(self):
+        self.tTable = QTableWidget()
+        self.tTable.setObjectName('TasksTable')
+        self.tTable.setMinimumWidth(self.width())
+        self.tTable.setColumnCount(4)
+        self.tTable.setHorizontalHeaderLabels(['文件名', '大小', '下载进度', '    '])
+        self.tTable.setColumnWidth(0, self.width() / 4)
+        self.tTable.setColumnWidth(1, self.width() / 4)
+        self.tTable.setColumnWidth(2, self.width() / 4)
+        self.tTable.setColumnWidth(3, self.width() / 4)
+        self.tTable.horizontalHeader().setStretchLastSection(True)
+        self.tTable.verticalHeader().setVisible(False)
+        self.tTable.setShowGrid(False)
+        self.tTable.setAlternatingRowColors(True)
 
-        self.singsTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.singsTable.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tTable.setSelectionBehavior(QAbstractItemView.SelectRows)
 
-        self.mainLayout.addWidget(self.singsTable)
+        self.mainLayout.addWidget(self.tTable)
 
 
 if __name__ == '__main__':

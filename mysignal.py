@@ -10,5 +10,6 @@ class MySignal(QObject):
     changeUserNameSignal = pyqtSignal(str)
     getListSignal = pyqtSignal(str)
     getUrlSIgnal = pyqtSignal(str)
+    exitSignal = pyqtSignal()
 
 signal = MySignal()
